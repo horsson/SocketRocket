@@ -226,7 +226,10 @@ typedef void (^data_callback)(SRWebSocket *webSocket,  NSData *data);
 
     BOOL _secure;
     NSURLRequest *_urlRequest;
-
+    
+    //Hao: Support client Certficate authentication?
+    BOOL _clientCert;
+    CFHTTPMessageRef _connectHTTPMessage;
     
     
     BOOL _sentClose;
@@ -271,6 +274,22 @@ static __strong NSData *CRLFCRLF;
     
     return self;
 }
+
+
+- (id)initWithURL:(NSURL *)url proxyHost:(NSString*) proxyHost proxyPort:(uint32_t) proxyPort {
+    self = [super init];
+    if (self) {
+        assert(url);
+        _url = url;
+        _urlRequest = [NSURLRequest requestWithURL:url];
+        _supportHTTPProxy = YES;
+        _httpProxyHost = proxyHost;
+        _httpProxyPort = proxyPort;
+        [self _SR_commonInit];
+    }    
+    return self;
+}
+
 
 - (id)initWithURLRequest:(NSURLRequest *)request;
 {
@@ -455,7 +474,7 @@ static __strong NSData *CRLFCRLF;
 }
 
 
-- (void)_readHTTPHeader;
+- (void)_readHTTPHeader
 {
     if (_receivedHTTPHeaders == NULL) {
         _receivedHTTPHeaders = CFHTTPMessageCreateEmpty(NULL, NO);
@@ -527,6 +546,53 @@ static __strong NSData *CRLFCRLF;
     [self _readHTTPHeader];
 }
 
+//Hao: Tell the HTTP Proxy, please open an Tunnel
+-(void) _sendConnectHTTPMessage{
+    SRFastLog(@"Trying to send CONNECT to Proxy. ");
+    
+    NSString* connectMessage = [[NSString alloc] initWithFormat:@"CONNECT %@:443 HTTP/1.1\r\n\r\n", _url.host];
+    NSData* messageData = [connectMessage dataUsingEncoding:NSUTF8StringEncoding];
+    [self _writeData:messageData];
+    [self _readHTTPConnectResponse];
+    
+    
+}
+
+- (void)_readHTTPConnectResponse
+{
+    if (_connectHTTPMessage == NULL) {
+        _connectHTTPMessage = CFHTTPMessageCreateEmpty(NULL, NO);
+    }
+    
+    [self _readUntilHeaderCompleteWithCallback:^(SRWebSocket *self,  NSData *data) {
+        CFHTTPMessageAppendBytes(_connectHTTPMessage, (const UInt8 *)data.bytes, data.length);
+        
+        if (CFHTTPMessageIsHeaderComplete(_connectHTTPMessage)) {
+            NSData *messageData = (NSData *)CFBridgingRelease(CFHTTPMessageCopySerializedMessage(_connectHTTPMessage));
+            NSString* messageString = [[NSString alloc] initWithData:messageData encoding:NSUTF8StringEncoding];
+            SRFastLog(@"Finished reading CONNECT response message\n %@", messageString);
+            [self _checkConnectHTTPHeaders];
+        } else {
+            [self _readHTTPConnectResponse];
+        }
+    }];
+}
+
+
+-(void) _checkConnectHTTPHeaders{
+    NSInteger responseCode = CFHTTPMessageGetResponseStatusCode(_connectHTTPMessage);
+    if (responseCode == 200) {
+        SRFastLog(@"Received 200 code from Proxy.");
+        [self _setStreamSSLProperties];
+        [self didConnect];
+    } else {
+        SRFastLog(@"Error! Cannot send CONNECT via Proxy. The status code is %d", responseCode);
+        [self _failWithError:[NSError errorWithDomain:SRWebSocketErrorDomain code:2132 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"Cannot send CONNECT via Proxy. The status code is %ld", (long)responseCode], SRHTTPResponseErrorKey:@(responseCode)}]];
+    }
+    
+}
+
+
 - (void)_initializeStreams;
 {
     assert(_url.port.unsignedIntValue <= UINT32_MAX);
@@ -542,42 +608,82 @@ static __strong NSData *CRLFCRLF;
     
     CFReadStreamRef readStream = NULL;
     CFWriteStreamRef writeStream = NULL;
-    
-    CFStreamCreatePairWithSocketToHost(NULL, (__bridge CFStringRef)host, port, &readStream, &writeStream);
+
+    if (self.supportHTTPProxy) {
+        //Hao: If support HTTP Proxy, should connect to HTTP Proxy server, instead of direct connection.
+        NSAssert(self.httpProxyHost != nil, @"HTTP Proxy should set a value");
+        if (self.httpProxyPort == 0) {
+            _httpProxyPort = 8080;
+        }
+        CFStreamCreatePairWithSocketToHost(NULL, (__bridge CFStringRef)self.httpProxyHost, self.httpProxyPort, &readStream, &writeStream);
+
+    } else {
+        CFStreamCreatePairWithSocketToHost(NULL, (__bridge CFStringRef)host, port, &readStream, &writeStream);
+        [self _setStreamSSLProperties];
+    }
     
     _outputStream = CFBridgingRelease(writeStream);
     _inputStream = CFBridgingRelease(readStream);
     
     
+    _inputStream.delegate = self;
+    _outputStream.delegate = self;
+}
+
+
+//Hao: Set Stream SSL property
+
+-(void) _setStreamSSLProperties {
     if (_secure) {
-        NSMutableDictionary *SSLOptions = [[NSMutableDictionary alloc] init];
         
-        [_outputStream setProperty:(__bridge id)kCFStreamSocketSecurityLevelNegotiatedSSL forKey:(__bridge id)kCFStreamPropertySocketSecurityLevel];
-        
-        // If we're using pinned certs, don't validate the certificate chain
-        if ([_urlRequest SR_SSLPinnedCertificates].count) {
-            [SSLOptions setValue:[NSNumber numberWithBool:NO] forKey:(__bridge id)kCFStreamSSLValidatesCertificateChain];
+        NSURLCredential* urlCredential = nil;
+        if ([self.delegate respondsToSelector:@selector(credentialForWebSocket:)]) {
+            urlCredential = [self.delegate credentialForWebSocket:self];
+            if (urlCredential && urlCredential.identity != nil) {
+                _clientCert = YES;
+            } else {
+                _clientCert = NO;
+            }
+        } else {
+            _clientCert = NO;
         }
         
+        
+        NSMutableDictionary *SSLOptions = [[NSMutableDictionary alloc] init];
+        [SSLOptions setObject:[NSNumber numberWithBool:NO] forKey:(NSString *)kCFStreamSSLValidatesCertificateChain];
+        [SSLOptions setObject:(NSString *)kCFStreamSocketSecurityLevelNegotiatedSSL forKey:(NSString*)kCFStreamSSLLevel];
+        [SSLOptions setObject:(NSString *)kCFStreamSocketSecurityLevelNegotiatedSSL forKey:(NSString*)kCFStreamPropertySocketSecurityLevel];
+        [SSLOptions setObject:[NSNumber numberWithBool:NO] forKey:(NSString *)kCFStreamSSLIsServer];
 #if DEBUG
         [SSLOptions setValue:[NSNumber numberWithBool:NO] forKey:(__bridge id)kCFStreamSSLValidatesCertificateChain];
         NSLog(@"SocketRocket: In debug mode.  Allowing connection to any root cert");
 #endif
+
         
-        [_outputStream setProperty:SSLOptions
-                            forKey:(__bridge id)kCFStreamPropertySSLSettings];
+        if (_clientCert) {
+            NSMutableArray* identityAndCerts = [[NSMutableArray alloc] initWithObjects:(__bridge id)urlCredential.identity, nil];
+            for (id cert in urlCredential.certificates) {
+                [identityAndCerts addObject:cert];
+            }
+            
+            [SSLOptions setObject:identityAndCerts forKey:(NSString *)kCFStreamSSLCertificates];
+        }
+        
+        
+        if (![_outputStream setProperty:SSLOptions
+                                 forKey:(__bridge id)kCFStreamPropertySSLSettings]){
+            SRFastLog(@"Warning!! Fail to set SSL option.");
+        }
     }
-    
-    _inputStream.delegate = self;
-    _outputStream.delegate = self;
 }
+
+
 
 - (void)openConnection;
 {
     if (!_scheduledRunloops.count) {
         [self scheduleInRunLoop:[NSRunLoop SR_networkRunLoop] forMode:NSDefaultRunLoopMode];
     }
-    
     
     [_outputStream open];
     [_inputStream open];
@@ -1368,6 +1474,7 @@ static const size_t SRFrameHeaderOverhead = 32;
     [self _writeData:frame];
 }
 
+#pragma mark - NSStreamDelegate
 - (void)stream:(NSStream *)aStream handleEvent:(NSStreamEvent)eventCode;
 {
     if (_secure && !_pinnedCertFound && (eventCode == NSStreamEventHasBytesAvailable || eventCode == NSStreamEventHasSpaceAvailable)) {
@@ -1412,7 +1519,12 @@ static const size_t SRFrameHeaderOverhead = 32;
                 assert(_readBuffer);
                 
                 if (self.readyState == SR_CONNECTING && aStream == _inputStream) {
-                    [self didConnect];
+                    //Hao: Send CONNECT firstly.
+                    if (self.supportHTTPProxy) {
+                        [self _sendConnectHTTPMessage];
+                    } else {
+                        [self didConnect];
+                    }
                 }
                 [self _pumpWriting];
                 [self _pumpScanner];
@@ -1603,7 +1715,7 @@ static const size_t SRFrameHeaderOverhead = 32;
 
 @end
 
-//#define SR_ENABLE_LOG
+#define SR_ENABLE_LOG
 
 static inline void SRFastLog(NSString *format, ...)  {
 #ifdef SR_ENABLE_LOG

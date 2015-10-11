@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		85CC79DD1BCAA9380085332D /* Certificates.p12 in Resources */ = {isa = PBXBuildFile; fileRef = 85CC79DA1BCAA9380085332D /* Certificates.p12 */; settings = {ASSET_TAGS = (); }; };
+		85CC79DE1BCAA9380085332D /* MCCSecurityManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 85CC79DC1BCAA9380085332D /* MCCSecurityManager.m */; settings = {ASSET_TAGS = (); }; };
 		F6016C8814620EC70037BB3D /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F6A12CD3145122FC00C1D980 /* Security.framework */; };
 		F6016C8914620ECC0037BB3D /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F6A12CD3145122FC00C1D980 /* Security.framework */; };
 		F6016C8A1462143C0037BB3D /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F6A12CD51451231B00C1D980 /* CFNetwork.framework */; };
@@ -53,6 +55,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		85CC79DA1BCAA9380085332D /* Certificates.p12 */ = {isa = PBXFileReference; lastKnownFileType = file; path = Certificates.p12; sourceTree = "<group>"; };
+		85CC79DB1BCAA9380085332D /* MCCSecurityManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MCCSecurityManager.h; sourceTree = "<group>"; };
+		85CC79DC1BCAA9380085332D /* MCCSecurityManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MCCSecurityManager.m; sourceTree = "<group>"; };
 		F60CC29F14D4EA0500A005E4 /* SRTWebSocketOperation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SRTWebSocketOperation.h; sourceTree = "<group>"; };
 		F60CC2A014D4EA0500A005E4 /* SRTWebSocketOperation.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SRTWebSocketOperation.m; sourceTree = "<group>"; };
 		F61A0DC71625F44D00365EBD /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "Default-568h@2x.png"; path = "en.lproj/Default-568h@2x.png"; sourceTree = "<group>"; };
@@ -148,6 +153,9 @@
 		F62417EA14D52F3C003CE997 /* TestChat */ = {
 			isa = PBXGroup;
 			children = (
+				85CC79DA1BCAA9380085332D /* Certificates.p12 */,
+				85CC79DB1BCAA9380085332D /* MCCSecurityManager.h */,
+				85CC79DC1BCAA9380085332D /* MCCSecurityManager.m */,
 				F62417EB14D52F3C003CE997 /* Supporting Files */,
 				F62417F314D52F3C003CE997 /* TCAppDelegate.h */,
 				F62417F414D52F3C003CE997 /* TCAppDelegate.m */,
@@ -410,6 +418,7 @@
 				F62417EF14D52F3C003CE997 /* InfoPlist.strings in Resources */,
 				F62417F814D52F3C003CE997 /* MainStoryboard.storyboard in Resources */,
 				F61A0DC81625F44D00365EBD /* Default-568h@2x.png in Resources */,
+				85CC79DD1BCAA9380085332D /* Certificates.p12 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -439,6 +448,7 @@
 				F62417F514D52F3C003CE997 /* TCAppDelegate.m in Sources */,
 				F62417FB14D52F3C003CE997 /* TCViewController.m in Sources */,
 				F624180114D5300C003CE997 /* TCChatCell.m in Sources */,
+				85CC79DE1BCAA9380085332D /* MCCSecurityManager.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

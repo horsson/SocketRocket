@@ -22,3 +22,4 @@ profile
 *.moved-aside
 DerivedData
 extern/
+TestChat/Certificates.p12

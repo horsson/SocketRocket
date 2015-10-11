@@ -50,6 +50,12 @@ extern NSString *const SRHTTPResponseErrorKey;
 
 @interface SRWebSocket : NSObject <NSStreamDelegate>
 
+//Hao:
+@property(nonatomic,readonly) NSString* httpProxyHost;
+@property(nonatomic,readonly) uint32_t httpProxyPort;
+@property(nonatomic, readonly) BOOL supportHTTPProxy;
+//=============
+
 @property (nonatomic, weak) id <SRWebSocketDelegate> delegate;
 
 @property (nonatomic, readonly) SRReadyState readyState;
@@ -67,6 +73,12 @@ extern NSString *const SRHTTPResponseErrorKey;
 // Protocols should be an array of strings that turn into Sec-WebSocket-Protocol.
 - (id)initWithURLRequest:(NSURLRequest *)request protocols:(NSArray *)protocols;
 - (id)initWithURLRequest:(NSURLRequest *)request;
+
+//Hao:
+- (id)initWithURL:(NSURL *)url proxyHost:(NSString*) proxyHost proxyPort:(uint32_t) proxyPort;
+
+//===================
+
 
 // Some helper constructors.
 - (id)initWithURL:(NSURL *)url protocols:(NSArray *)protocols;
@@ -109,6 +121,13 @@ extern NSString *const SRHTTPResponseErrorKey;
 - (void)webSocket:(SRWebSocket *)webSocket didFailWithError:(NSError *)error;
 - (void)webSocket:(SRWebSocket *)webSocket didCloseWithCode:(NSInteger)code reason:(NSString *)reason wasClean:(BOOL)wasClean;
 - (void)webSocket:(SRWebSocket *)webSocket didReceivePong:(NSData *)pongPayload;
+
+//Hao:
+
+-(NSURLCredential*)credentialForWebSocket:(SRWebSocket*) webSocket;
+
+//==================
+
 
 @end
 

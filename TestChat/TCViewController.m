@@ -9,6 +9,7 @@
 #import "TCViewController.h"
 #import <SocketRocket/SRWebSocket.h>
 #import "TCChatCell.h"
+#import "MCCSecurityManager.h"
 
 @interface TCMessage : NSObject
 
@@ -46,7 +47,8 @@
     _webSocket.delegate = nil;
     [_webSocket close];
     
-    _webSocket = [[SRWebSocket alloc] initWithURLRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"ws://localhost:9000/chat"]]];
+    
+    _webSocket = [[SRWebSocket alloc] initWithURL:[NSURL URLWithString:@"wss://echoserversapitcloudd.cert.hana.ondemand.com/EchoServer/echoEndpoint"] proxyHost:@"proxy" proxyPort:8080];
     _webSocket.delegate = self;
     
     self.title = @"Opening Connection...";
@@ -144,6 +146,20 @@
 {
     NSLog(@"Websocket received pong");
 }
+
+
+
+-(NSURLCredential*) credentialForWebSocket:(SRWebSocket *)webSocket{
+    NSLog(@"didReceiveChallenge");
+    MCCSecurityManager* mgr = [MCCSecurityManager sharedManager];
+    
+    NSURLCredential* credential = [NSURLCredential credentialWithIdentity:mgr.identity certificates:mgr.certificates persistence:NSURLCredentialPersistenceNone];
+    
+
+    return credential;
+}
+
+
 
 - (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text;
 {
