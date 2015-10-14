@@ -10,6 +10,7 @@
 #import <SocketRocket/SRWebSocket.h>
 #import "TCChatCell.h"
 #import "MCCSecurityManager.h"
+#import "HHProxyInfo.h"
 
 @interface TCMessage : NSObject
 
@@ -47,8 +48,13 @@
     _webSocket.delegate = nil;
     [_webSocket close];
     
+//    NSURL* urlToEchoServer = [NSURL URLWithString:@"https://echoserversapitcloudd.cert.hana.ondemand.com/EchoServer/echoEndpoint"];
+//    HHProxyInfo* proxyInfo = [HHProxyInfo proxyInfo];
     
-    _webSocket = [[SRWebSocket alloc] initWithURL:[NSURL URLWithString:@"wss://echoserversapitcloudd.cert.hana.ondemand.com/EchoServer/echoEndpoint"] proxyHost:@"proxy" proxyPort:8080];
+    
+    
+   // _webSocket = [[SRWebSocket alloc] initWithURL:[NSURL URLWithString:@"wss://echoserversapitcloudd.cert.hana.ondemand.com/EchoServer/echoEndpoint"] proxyHost:@"proxy" proxyPort:8080];
+    _webSocket = [[SRWebSocket alloc] initWithURL:[NSURL URLWithString:@"wss://echoserversapitcloudd.cert.hana.ondemand.com/EchoServer/echoEndpoint"]];
     _webSocket.delegate = self;
     
     self.title = @"Opening Connection...";
@@ -110,6 +116,9 @@
 
     return [self.tableView dequeueReusableCellWithIdentifier:message.fromMe ? @"SentCell" : @"ReceivedCell"];
 }
+
+
+
 
 #pragma mark - SRWebSocketDelegate
 

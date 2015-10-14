@@ -592,6 +592,8 @@ static __strong NSData *CRLFCRLF;
     
 }
 
+//=============================
+
 
 - (void)_initializeStreams;
 {
@@ -619,15 +621,15 @@ static __strong NSData *CRLFCRLF;
 
     } else {
         CFStreamCreatePairWithSocketToHost(NULL, (__bridge CFStringRef)host, port, &readStream, &writeStream);
-        [self _setStreamSSLProperties];
+       
     }
     
     _outputStream = CFBridgingRelease(writeStream);
     _inputStream = CFBridgingRelease(readStream);
     
-    
     _inputStream.delegate = self;
     _outputStream.delegate = self;
+
 }
 
 
@@ -683,6 +685,11 @@ static __strong NSData *CRLFCRLF;
 {
     if (!_scheduledRunloops.count) {
         [self scheduleInRunLoop:[NSRunLoop SR_networkRunLoop] forMode:NSDefaultRunLoopMode];
+    }
+    
+    
+    if (!self.supportHTTPProxy) {
+        [self _setStreamSSLProperties];
     }
     
     [_outputStream open];
